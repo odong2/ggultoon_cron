@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.daosub.statistics.CpStatDaoSub">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <select id="getStat" parameterType="hashmap" resultType="CpStatDto">
+        SELECT
+            DATE_FORMAT(CONVERT_TZ(`mepu`.`regdate`,'UTC','Asia/Seoul'),'%Y-%m-%d') AS `date`,
+            `mepu`.`contents_idx`,
+            SUM(`mepu`.`coin`) AS coin,
+            SUM(IF(`mepu`.`type` = 1, `mepu`.`coin`, 0)) AS coin_rent,
+            SUM(IF(`mepu`.`type` = 2, `mepu`.`coin`, 0)) AS coin_keep,
+            `mepu`.`mileage`,
+            SUM(IF(`mepu`.`type` = 1, `mepu`.`mileage`, 0)) AS mileage_rent,
+            SUM(IF(`mepu`.`type` = 2, `mepu`.`mileage`, 0)) AS mileage_keep,
+            `cocp`.`cp_member_idx`,
+            IFNULL(`code`.`idx`, 0) AS code_idx,
+            IFNULL(`code`.`code`, '') AS code,
+            `co`.`category_idx`,
+            `co`.`adult_pavilion`,
+            `co`.`adult`,
+            `cocp`.`contract`,
+            `cocp`.`calculate`,
+            `cocp`.`calculate_app`,
+            COUNT(IF(`mepu`.`coin` > 0, 1, NULL)) AS coin_cnt,
+            COUNT(1) AS total_cnt,
+            `cocp`.`web_fee`,
+            `cocp`.`app_fee`,
+            `mepu`.`route`
+        FROM <include refid="database"/>`member_purchase` AS mepu
+        JOIN <include refid="database"/>`contents` AS co
+            ON `mepu`.`contents_idx` = `co`.`idx`
+        JOIN <include refid="database"/>`contents_cp` AS cocp
+            ON `co`.`idx` = `cocp`.`contents_idx` AND `cocp`.`state` = 1
+        LEFT JOIN <include refid="database"/>`code_mapping` AS coma
+            ON `co`.`idx` = `coma`.`contents_idx`
+        LEFT JOIN <include refid="database"/>`code` AS `code`
+            ON `code`.`idx`  = `coma`.`code_idx`
+        <where>
+            <![CDATA[
+                `mepu`.`regdate` >= CONVERT_TZ(#{startDate}, 'Asia/Seoul', 'UTC')
+            AND `mepu`.`regdate` < CONVERT_TZ(#{endDate}, 'Asia/Seoul', 'UTC')
+            AND `mepu`.`state` = 1
+            ]]>
+        </where>
+        GROUP BY `date`, `mepu`.`contents_idx`, `mepu`.`route`
+        ORDER BY `date`, `mepu`.`contents_idx`
+    </select>
+
+
+
+
+</mapper>

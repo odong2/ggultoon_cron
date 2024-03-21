@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.dao.rank.RankDao">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        INSERT
+    =============================================================== -->
+
+    <!-- 랭킹 등록 -->
+    <insert id="insertRankingTop120" parameterType="hashmap">
+        INSERT IGNORE INTO <include refid="database" />`${insertTable}`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `adult_pavilion`,
+            `type`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{adultPavilion},
+            #{item.type},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`),
+            `ranking` = VALUES(`ranking`)
+    </insert>
+
+    <!-- 랭킹 백업 -->
+    <insert id="insertRankingBackup" parameterType="hashmap">
+        INSERT IGNORE INTO <include refid="database" />`${tableName}`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `adult_pavilion`,
+            `type`,
+            `episode_count`,
+            `ranking`,
+            `ranking_prev`
+        )
+        VALUES
+        <foreach collection="backupList" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.adultPavilion},
+            #{item.type},
+            #{item.episodeCount},
+            #{item.ranking},
+            #{item.rankingPrev}
+        )
+        </foreach>
+    </insert>
+
+
+    <!-- ==============================================================
+        UPDATE
+    =============================================================== -->
+
+    <!-- 랭킹 - 이전 랭킹 update -->
+    <update id="updateRankingPrevTop120" parameterType="hashmap">
+        UPDATE <include refid="database" />`${insertTable}` AS rada
+        LEFT JOIN <include refid="database" />`${insertTable}` AS rada2
+            ON rada.`contents_idx` = rada2.`contents_idx`
+            AND rada2.`date` = #{compareDate}
+            AND rada.`type` = rada2.`type`
+        SET
+            rada.`ranking_prev` = rada2.`ranking`
+        WHERE
+                rada.`category_idx` = #{categoryIdx}
+            AND rada.`type` = #{type}
+            AND rada.`date` = #{nowDate}
+    </update>
+
+    <!-- 랭킹 - state 변경 -->
+    <update id="updateRankingStateTop120" parameterType="hashmap">
+        UPDATE <include refid="database" />`${insertTable}` AS rada
+        SET
+            rada.`state` = IF(rada.`state` = 0, 1, 0)
+        WHERE
+                rada.`category_idx` = #{categoryIdx}
+            AND rada.`type` = #{type}
+            AND (rada.`state` = 1 OR rada.`date` = #{nowDate})
+    </update>
+
+
+    <!-- ==============================================================
+        DELETE
+    =============================================================== -->
+
+    <!-- 지난 랭킹(-3시간) 삭제-->
+    <delete id="deleteRankingBackup">
+        DELETE
+        FROM <include refid="database" />`ranking_daily`
+        WHERE
+        <![CDATA[
+                `state` = 0
+            AND `date` = #{backupDate}
+        ]]>
+    </delete>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 백업 테이블 생성 -->
+    <select id="addTable" parameterType="String" resultType="Integer">
+        CREATE TABLE IF NOT EXISTS <include refid="database" />`${tableName}` (
+            `date` DATETIME NOT NULL COMMENT '날짜',
+            `category_idx` INT UNSIGNED NOT NULL COMMENT 'category.idx',
+            `genre_idx` INT UNSIGNED NOT NULL DEFAULT '0' COMMENT 'genre.idx',
+            `contents_idx` INT UNSIGNED NOT NULL COMMENT 'contents.idx',
+            `adult_pavilion` TINYINT UNSIGNED DEFAULT NULL COMMENT '성인유무',
+            `type` INT UNSIGNED NOT NULL COMMENT '타입',
+            `episode_count` INT UNSIGNED DEFAULT '0' COMMENT '구매 수',
+            `ranking` INT UNSIGNED DEFAULT NULL COMMENT '순위',
+            `ranking_prev` INT UNSIGNED DEFAULT NULL COMMENT '이전 순위',
+            PRIMARY KEY (`date`,`contents_idx`,`type`),
+            KEY `ik_contents_idx` (`contents_idx`),
+            KEY `ik_date` (`date`)
+        ) COMMENT='작품 시간별 랭킹 백업'
+    </select>
+
+
+
+
+
+
+    <!-- TODO 랭킹 변경 - 이전 랭킹 삭제 예정 -->
+
+    <!-- ==============================================================
+        INSERT
+    =============================================================== -->
+
+    <!-- 일간 - 일반 랭킹 -->
+    <insert id="insertRankingNormal" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_day_normal`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 일간 - 성인 랭킹 -->
+    <insert id="insertRankingAdult" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_day_adult`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 일간 - 전체 랭킹 -->
+    <insert id="insertRankingAll" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_day_all`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 주간 - 일반 랭킹 -->
+    <insert id="insertRankingWeekNormal" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_week_normal`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 주간 - 성인 랭킹 -->
+    <insert id="insertRankingWeekAdult" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_week_adult`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 주간 - 전체 랭킹 -->
+    <insert id="insertRankingWeekAll" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_week_all`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 월간 - 일반 랭킹 -->
+    <insert id="insertRankingMonthNormal" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_month_normal`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 월간 - 성인 랭킹 -->
+    <insert id="insertRankingMonthAdult" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_month_adult`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- 월간 - 전체 랭킹 -->
+    <insert id="insertRankingMonthAll" parameterType="RankDto">
+        INSERT IGNORE INTO <include refid="database" />`ranking_month_all`
+        (
+            `date`,
+            `category_idx`,
+            `genre_idx`,
+            `contents_idx`,
+            `episode_count`,
+            `ranking`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.categoryIdx},
+            #{item.genreIdx},
+            #{item.contentsIdx},
+            #{item.episodeCount},
+            #{item.ranking}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `episode_count` = VALUES(`episode_count`)
+    </insert>
+
+    <!-- ==============================================================
+        UPDATE
+    =============================================================== -->
+
+    <!-- 일간 - 전일 랭킹 update -->
+    <update id="updateRankingPrev" parameterType="hashmap">
+        UPDATE
+            <if test="tableName.equals('normal')">
+                <include refid="database" />`ranking_day_normal` AS ranking
+            </if>
+            <if test="tableName.equals('adult')">
+                <include refid="database" />`ranking_day_adult` AS ranking
+            </if>
+            <if test="tableName.equals('all')">
+                <include refid="database" />`ranking_day_all` AS ranking
+            </if>
+        JOIN <include refid="database"/>`contents` AS co
+            ON ranking.contents_idx = co.idx
+        <if test="tableName.equals('normal')">
+        LEFT JOIN <include refid="database" />`ranking_day_normal` AS ranking2
+            ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        <if test="tableName.equals('adult')">
+        LEFT JOIN <include refid="database" />`ranking_day_adult` AS ranking2
+            ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        <if test="tableName.equals('all')">
+        LEFT JOIN <include refid="database" />`ranking_day_all` AS ranking2
+            ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        SET
+            ranking.`episode_count_prev` = ifnull(ranking2.`episode_count`, 0),
+            ranking.`ranking_prev` = ranking2.`ranking`
+        WHERE
+                ranking.`date` = date_add(#{endDate}, INTERVAL -1 DAY)
+            <if test="adultPavilion != null">
+                AND co.`adult_pavilion` = #{adultPavilion}
+            </if>
+    </update>
+
+    <!-- 일간 - state update -->
+    <update id="updateRankingState" parameterType="hashmap">
+        UPDATE
+        <if test="tableName.equals('normal')">
+            <include refid="database" />`ranking_day_normal` AS ranking
+        </if>
+        <if test="tableName.equals('adult')">
+            <include refid="database" />`ranking_day_adult` AS ranking
+        </if>
+        <if test="tableName.equals('all')">
+            <include refid="database" />`ranking_day_all` AS ranking
+        </if>
+        SET
+            ranking.`state` = IF(ranking.`state` = 0, 1, 0)
+        WHERE
+                (ranking.`date` = date_add(#{endDate}, INTERVAL -2 DAY)
+            OR ranking.`date` = date_add(#{endDate}, INTERVAL -1 DAY))
+    </update>
+
+    <!-- 주간 - 전주 랭킹 update -->
+    <update id="updateRankingWeekPrev" parameterType="hashmap">
+        UPDATE
+        <if test="tableName.equals('normal')">
+            <include refid="database" />`ranking_week_normal` AS ranking
+        </if>
+        <if test="tableName.equals('adult')">
+            <include refid="database" />`ranking_week_adult` AS ranking
+        </if>
+        <if test="tableName.equals('all')">
+            <include refid="database" />`ranking_week_all` AS ranking
+        </if>
+        JOIN <include refid="database"/>`contents` AS co
+            ON ranking.contents_idx = co.idx
+        <if test="tableName.equals('normal')">
+            LEFT JOIN <include refid="database" />`ranking_week_normal` AS ranking2
+                ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        <if test="tableName.equals('adult')">
+            LEFT JOIN <include refid="database" />`ranking_week_adult` AS ranking2
+                ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        <if test="tableName.equals('all')">
+            LEFT JOIN <include refid="database" />`ranking_week_all` AS ranking2
+                ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        SET
+            ranking.`episode_count_prev` = ifnull(ranking2.`episode_count`, 0),
+            ranking.`ranking_prev` = ranking2.`ranking`
+        WHERE
+                ranking.`date` = date_add(#{endDate}, INTERVAL -1 DAY)
+            <if test="adultPavilion != null">
+                AND co.`adult_pavilion` = #{adultPavilion}
+            </if>
+    </update>
+
+    <!-- 주간 - state update -->
+    <update id="updateRankingWeekState" parameterType="hashmap">
+        UPDATE
+        <if test="tableName.equals('normal')">
+            <include refid="database" />`ranking_week_normal` AS ranking
+        </if>
+        <if test="tableName.equals('adult')">
+            <include refid="database" />`ranking_week_adult` AS ranking
+        </if>
+        <if test="tableName.equals('all')">
+            <include refid="database" />`ranking_week_all` AS ranking
+        </if>
+        SET
+            ranking.`state` = IF(ranking.`state` = 0, 1, 0)
+        WHERE
+                (ranking.`date` = date_add(#{endDate}, INTERVAL -2 DAY)
+            OR ranking.`date` = date_add(#{endDate}, INTERVAL -1 DAY))
+    </update>
+
+    <!-- 월간 - 전월 랭킹 update -->
+    <update id="updateRankingMonthPrev" parameterType="hashmap">
+        UPDATE
+        <if test="tableName.equals('normal')">
+            <include refid="database" />`ranking_month_normal` AS ranking
+        </if>
+        <if test="tableName.equals('adult')">
+            <include refid="database" />`ranking_month_adult` AS ranking
+        </if>
+        <if test="tableName.equals('all')">
+            <include refid="database" />`ranking_month_all` AS ranking
+        </if>
+        JOIN <include refid="database"/>`contents` AS co
+            ON ranking.contents_idx = co.idx
+        <if test="tableName.equals('normal')">
+            LEFT JOIN <include refid="database" />`ranking_month_normal` AS ranking2
+                ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        <if test="tableName.equals('adult')">
+            LEFT JOIN <include refid="database" />`ranking_month_adult` AS ranking2
+                ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        <if test="tableName.equals('all')">
+            LEFT JOIN <include refid="database" />`ranking_month_all` AS ranking2
+                ON ranking.`contents_idx` = ranking2.`contents_idx` AND ranking2.`date` = date_add(#{startDate}, INTERVAL -1 DAY)
+        </if>
+        SET
+            ranking.`episode_count_prev` = ifnull(ranking2.`episode_count`, 0),
+            ranking.`ranking_prev` = ranking2.`ranking`
+        WHERE
+                ranking.`date` = date_add(#{endDate}, INTERVAL -1 DAY)
+            <if test="adultPavilion != null">
+                AND co.`adult_pavilion` = #{adultPavilion}
+            </if>
+    </update>
+
+    <!-- 월간 - state update -->
+    <update id="updateRankingMonthState" parameterType="hashmap">
+        UPDATE
+        <if test="tableName.equals('normal')">
+            <include refid="database" />`ranking_month_normal` AS ranking
+        </if>
+        <if test="tableName.equals('adult')">
+            <include refid="database" />`ranking_month_adult` AS ranking
+        </if>
+        <if test="tableName.equals('all')">
+            <include refid="database" />`ranking_month_all` AS ranking
+        </if>
+        SET
+            ranking.`state` = IF(ranking.`state` = 0, 1, 0)
+        WHERE
+                (ranking.`date` = date_add(#{endDate}, INTERVAL -2 DAY)
+            OR ranking.`date` = date_add(#{endDate}, INTERVAL -1 DAY))
+    </update>
+</mapper>

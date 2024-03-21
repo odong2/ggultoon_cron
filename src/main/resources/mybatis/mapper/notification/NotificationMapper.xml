@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.dao.notification.NotificationDao">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        INSERT
+    =============================================================== -->
+
+    <!-- 소멸 예정 코인 등록 -->
+    <insert id="insertCoinUsedAlarm" parameterType="MemberNotificationDto">
+        INSERT INTO <include refid="database"/>`member_notification`
+            (
+                `member_idx`,
+                `category`,
+                `type`,
+                `type_idx`,
+                `title`,
+                `state`,
+                `regdate`,
+                `regdate_tz`
+            )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.memberIdx},
+                'expire',
+                'member_coin_used',
+                #{item.typeIdx},
+                #{item.title},
+                1,
+                #{item.regdate},
+                '${convertTZ}'
+            )
+        </foreach>
+    </insert>
+
+    <!-- 소멸 예정 마일리지 알림 등록 -->
+    <insert id="insertMileageUsedAlarm" parameterType="MemberNotificationDto">
+        INSERT INTO <include refid="database"/>`member_notification`
+        (
+            `member_idx`,
+            `category`,
+            `type`,
+            `type_idx`,
+            `title`,
+            `state`,
+            `regdate`,
+            `regdate_tz`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.memberIdx},
+                'expire',
+                'member_mileage_used',
+                #{item.typeIdx},
+                #{item.title},
+                1,
+                #{item.regdate},
+                '${convertTZ}'
+            )
+        </foreach>
+    </insert>
+
+    <!-- 신규 업데이트 회차 알림 등록 -->
+    <insert id="insertEpisodeAlarm" parameterType="MemberNotificationDto">
+        INSERT INTO <include refid="database"/>`member_notification`
+        (
+            `member_idx`,
+            `category`,
+            `type`,
+            `type_idx`,
+            `state`,
+            `regdate`,
+            `regdate_tz`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.memberIdx},
+                'content',
+                'episode',
+                #{item.typeIdx},
+                1,
+                #{item.regdate},
+                '${convertTZ}'
+            )
+        </foreach>
+    </insert>
+
+</mapper>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.dao.statistics.CpStatDao">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        INSERT
+    =============================================================== -->
+    <insert id="setStat" parameterType="CpStatDto">
+        INSERT IGNORE INTO <include refid="database"/>cp_stat
+        (
+            `date`,
+            `contents_idx`,
+            `coin`,
+            `coin_rent`,
+            `coin_keep`,
+            `mileage`,
+            `mileage_rent`,
+            `mileage_keep`,
+            `cp_member_idx`,
+            `code_idx`,
+            `code`,
+            `category_idx`,
+            `adult_pavilion`,
+            `adult`,
+            `contract`,
+            `calculate`,
+            `calculate_app`,
+            `coin_cnt`,
+            `total_cnt`,
+            `web_fee`,
+            `app_fee`,
+            `route`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.date},
+            #{item.contentsIdx},
+            #{item.coin},
+            #{item.coinRent},
+            #{item.coinKeep},
+            #{item.mileage},
+            #{item.mileageRent},
+            #{item.mileageKeep},
+            #{item.cpMemberIdx},
+            #{item.codeIdx},
+            #{item.code},
+            #{item.categoryIdx},
+            #{item.adultPavilion},
+            #{item.adult},
+            #{item.contract},
+            #{item.calculate},
+            #{item.calculateApp},
+            #{item.coinCnt},
+            #{item.totalCnt},
+            #{item.webFee},
+            #{item.appFee},
+            #{item.route}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `coin` = VALUES(coin),
+            `coin_rent` = VALUES(coin_rent),
+            `coin_keep` = VALUES(coin_keep),
+            `mileage` = VALUES(mileage),
+            `mileage_rent` = VALUES(mileage_rent),
+            `mileage_keep` = VALUES(mileage_keep),
+            `coin_cnt` = VALUES(coin_cnt),
+            `total_cnt` = VALUES(total_cnt)
+    </insert>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+</mapper>

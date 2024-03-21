@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.daosub.member.GradeDaoSub">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <select id="getMemberPayment" parameterType="hashmap" resultType="MemberGradeDto">
+        SELECT
+            me.idx,
+            IFNULL(sum(pa.`pay`), 0) AS amount
+        FROM <include refid="database"/>member AS me
+        LEFT JOIN <include refid="database"/>payment AS pa
+            ON me.idx = pa.member_idx
+            <![CDATA[
+                AND pa.`regdate` >= #{startDate}
+                AND pa.`regdate` <= #{endDate}
+                AND pa.`state` = 1
+            ]]>
+        GROUP BY me.idx
+    </select>
+</mapper>

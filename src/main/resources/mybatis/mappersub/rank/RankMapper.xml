@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.daosub.rank.RankDaoSub">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 작품 구매 수 -->
+    <select id="getRankingTop120" parameterType="hashmap" resultType="RankDto">
+        SELECT
+            <choose>
+                <when test="insertTable == 'ranking_weekly'">
+                    DATE_FORMAT(#{endDate}, '%Y-%m-%d') AS `date`
+                </when>
+                <when test="insertTable == 'ranking_monthly'">
+                    DATE_FORMAT(#{endDate}, '%Y-%m-%d') AS `date`
+                </when>
+                <otherwise>
+                    DATE_FORMAT(#{endDate}, '%Y-%m-%d %H:00:00') AS `date`
+                </otherwise>
+            </choose>
+            , co.`category_idx`
+            , co.`genre_idx`
+            , co.`idx` AS `contents_idx`
+            , #{type} AS `type`
+            , count(mepu.idx) AS episode_count
+            , ROW_NUMBER() over(ORDER BY count(mepu.`idx`) DESC, co.`regdate` DESC, co.`idx` DESC) AS ranking
+        FROM <include refid="database"/>`contents` AS co
+        LEFT JOIN <include refid="database"/>`member_purchase` AS mepu
+            ON co.`idx` = mepu.`contents_idx`
+            AND mepu.`state` = 1
+            <![CDATA[
+            AND mepu.`regdate` >= #{startDate}
+            AND mepu.`regdate` < #{endDate}
+            ]]>
+        <where>
+                co.`state` = 1
+            AND co.`category_idx` = #{categoryIdx}
+            <if test="adultPavilion != null and adultPavilion != 2">
+                AND co.`adult_pavilion` = #{adultPavilion}
+            </if>
+            <if test="adultPavilion == null">
+                AND co.`adult_pavilion` = 0
+            </if>
+            <if test="genreIdx != null">
+                AND co.`genre_idx` = #{genreIdx}
+            </if>
+        </where>
+        GROUP BY co.`idx`
+        ORDER BY episode_count DESC, co.`regdate` DESC, co.`idx` DESC
+        LIMIT 120
+    </select>
+
+
+    <!-- 장르 조회 -->
+    <select id="getGenreList" resultType="Integer">
+        SELECT
+            ge.`idx`
+        FROM <include refid="database"/>`genre` AS ge
+        <where>
+            ge.`state` = 1
+        </where>
+    </select>
+
+
+    <!-- 백업 테이블 존재 여부 -->
+    <select id="checkTable" parameterType="String" resultType="Integer">
+        SELECT
+            COUNT(*) AS cnt
+        FROM Information_schema.tables
+        <where>
+            TABLE_NAME = #{tableName}
+        </where>
+    </select>
+
+
+    <!-- 백업 랭킹 조회 -->
+    <select id="getRankingBackup" parameterType="hashmap" resultType="RankDto">
+        SELECT
+            rada.`date`
+            , rada.`category_idx`
+            , rada.`genre_idx`
+            , rada.`contents_idx`
+            , rada.`adult_pavilion`
+            , rada.`type`
+            , rada.`episode_count`
+            , rada.`ranking`
+            , rada.`ranking_prev`
+        FROM <include refid="database"/>`ranking_daily` AS rada
+        <where>
+        <![CDATA[
+                rada.`state` = 0
+            AND rada.`date` = #{backupDate}
+        ]]>
+        </where>
+    </select>
+
+
+
+
+    <!-- TODO 랭킹 변경 - 이전 랭킹 삭제 예정 -->
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 작품 구매 수 -->
+    <select id="getRanking" parameterType="hashmap" resultType="RankDto">
+        SELECT
+            date_add(DATE_FORMAT(#{endDate},'%Y-%m-%d'), INTERVAL -1 DAY) AS `date`,
+            co.`category_idx`,
+            co.`genre_idx`,
+            mepu.`contents_idx`,
+            count(mepu.`episode_idx`) AS `episode_count`
+        FROM <include refid="database"/>`member_purchase` AS mepu
+        JOIN <include refid="database"/>`contents` AS co
+            ON mepu.`contents_idx` = co.`idx`
+        <where>
+            <![CDATA[
+                mepu.`regdate` >= CONVERT_TZ(#{startDate}, '${convertTZ}', 'UTC')
+            AND mepu.`regdate` < CONVERT_TZ(#{endDate}, '${convertTZ}', 'UTC')
+            ]]>
+            <if test="adultPavilion != null">
+                AND co.`adult_pavilion` = #{adultPavilion}
+            </if>
+        </where>
+        GROUP BY mepu.`contents_idx`
+        ORDER BY episode_count DESC
+    </select>
+
+
+</mapper>

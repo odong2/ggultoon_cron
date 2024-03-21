@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.daosub.notification.NotificationDaoSub">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 소멸 예정 코인 type_idx 리스트 조회 [이미 보낸 알림 조회] -->
+    <select id="getCoinUsedIdxList" resultType="Long">
+        SELECT
+            `type_idx`
+        FROM <include refid="database"/> `member_notification`
+        WHERE
+                `state` = 1
+            AND `type` = 'member_coin_used'
+    </select>
+
+    <!-- 소멸 예정 마일리지 type_idx 리스트 조회 [이미 보낸 알림 조회] -->
+    <select id="getMileageUsedIdxList" resultType="Long">
+        SELECT
+            `type_idx`
+        FROM <include refid="database"/> `member_notification`
+        WHERE
+                `state` = 1
+            AND `type` = 'member_mileage_used'
+    </select>
+
+    <!-- 신규 업데이트 회차 type_idx 리스트 조회 [이미 보낸 알림 조회] -->
+    <select id="getEpisodeIdxAlarmList" resultType="Long">
+        SELECT
+            `type_idx`
+        FROM <include refid="database"/> `member_notification`
+        WHERE
+            `state` = 1
+            AND `type` = 'episode'
+    </select>
+</mapper>

@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.dao.coin.CoinDao">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 회원 마일리지 조회 -->
+    <select id="getMemberMileage" parameterType="CoinDto" resultType="Integer">
+        SELECT
+            IFNULL(SUM(`rest_mileage`), 0) AS `mileage`
+        FROM <include refid="database"/>`member_mileage_used`
+        WHERE
+                `member_idx` = #{memberIdx}
+            AND  #{nowDate} <![CDATA[ < ]]> `expiredate`
+            AND `state` = 1
+    </select>
+
+    <!-- 만료된 마일리지 정보 조회 -->
+    <select id="getExpireMileageInfoList" parameterType="String" resultType="CoinDto">
+        SELECT
+            `idx`,
+            `member_idx`,
+            `mileage`,
+            `rest_mileage`
+        FROM <include refid="database"/>`member_mileage_used`
+        WHERE
+                `expiredate` <![CDATA[ < ]]> #{nowDate}
+            AND `state` = 0
+    </select>
+
+    <!-- 회원 코인 조회(코인 + 보너스코인) -->
+    <select id="getMemberCoin" parameterType="CoinDto" resultType="CoinDto">
+        SELECT
+            IFNULL(SUM((CASE WHEN `type`= 1  THEN `rest_coin` END)), 0) AS `restCoin`,
+            IFNULL(SUM((CASE WHEN `type`= 2  THEN `rest_coin` END)), 0) AS `restCoinFree`
+        FROM <include refid="database"/>`member_coin_used`
+        WHERE
+                `member_idx` = #{memberIdx}
+            AND  #{nowDate} <![CDATA[ < ]]> `expiredate`
+            AND `state` = 1
+    </select>
+
+    <!-- 만료된 코인 정보 조회-->
+    <select id="getExpireCoinInfoList" parameterType="String" resultType="CoinDto">
+        SELECT
+            `idx`,
+            `member_idx`,
+            `coin`,
+            `rest_coin`,
+            `type`
+        FROM <include refid="database"/>`member_coin_used`
+        WHERE
+                `expiredate` <![CDATA[ < ]]> #{nowDate}
+            AND `state` = 0
+    </select>
+
+    <!-- ==============================================================
+        INSERT
+    =============================================================== -->
+
+    <!-- 만료된 코인 로그 등록 -->
+    <insert id="insertExpireCoinLog" parameterType="CoinDto">
+        INSERT INTO <include refid="database"/>`member_coin_expire_log`
+            (
+            `member_idx`,
+            `member_coin_used_idx`,
+            `coin`,
+            `rest_coin`,
+            `coin_type`,
+            `state`,
+            `regdate`,
+            `regdate_tz`
+            )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.memberIdx},
+            #{item.coinUsedIdx},
+            #{item.coin},
+            #{item.restCoin},
+            #{item.type},
+            1,
+            #{item.regdate},
+            '${convertTZ}'
+            )
+        </foreach>
+    </insert>
+
+    <!-- 만료된 마일리지 로그 등록 -->
+    <insert id="insertExpireMileageLog" parameterType="CoinDto">
+        INSERT INTO <include refid="database"/>`member_mileage_expire_log`
+            (
+            `member_idx`,
+            `member_mileage_used_idx`,
+            `mileage`,
+            `rest_mileage`,
+            `state`,
+            `regdate`,
+            `regdate_tz`
+            )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.memberIdx},
+            #{item.mileageUsedIdx},
+            #{item.mileage},
+            #{item.restMileage},
+            1,
+            #{item.regdate},
+            '${convertTZ}'
+            )
+        </foreach>
+    </insert>
+
+    <!-- ==============================================================
+        UPDATE
+    =============================================================== -->
+
+    <!-- 회원 마일리지 update(member_coin 테이블 update) -->
+    <update id="updateMileageFromMemberCoin" parameterType="CoinDto">
+        UPDATE <include refid="database"/>`member_coin`
+        SET
+            `mileage` = #{mileage}
+        WHERE
+            `member_idx` = #{memberIdx}
+    </update>
+
+    <!-- 코인 & 보너스 코인 update-->
+    <update id="updateMemberCoinAndCoinFree" parameterType="CoinDto">
+        UPDATE <include refid="database"/>`member_coin`
+        SET
+            `coin`      = #{coin},
+            `coin_free` = #{coinFree}
+        WHERE
+            `member_idx` = #{memberIdx}
+    </update>
+
+    <!-- 만료된 코인 update (member_coin_used 테이블) -->
+    <update id="updateExpireCoin" parameterType="String">
+        UPDATE <include refid="database"/>`member_coin_used`
+        SET
+            `state` = 0
+        WHERE
+                `expiredate` <![CDATA[ < ]]> #{nowDate}
+            AND `state` = 1
+    </update>
+
+    <!-- 만료된 마일리지 update (member_mileage_used 테이블) -->
+    <update id="updateExpireMileage" parameterType="CoinDto">
+        UPDATE <include refid="database"/>`member_mileage_used`
+        SET
+            `state` = 0
+        WHERE
+                `expiredate` <![CDATA[ < ]]> #{nowDate}
+            AND `state` = 1
+    </update>
+
+</mapper>

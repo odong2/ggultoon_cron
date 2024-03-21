@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.dao.member.GradeDao">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        INSERT
+    =============================================================== -->
+
+    <!-- 회원 등급 등록 -->
+    <insert id="insertMemberGrade" parameterType="MemberGradeDto">
+        INSERT IGNORE INTO <include refid="database" />`member_grade`
+        (
+            `idx`,
+            `amount`,
+            `grade`,
+            `add_mileage`,
+            `payback`
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+        (
+            #{item.idx},
+            #{item.amount},
+            #{item.grade},
+            #{item.addMileage},
+            #{item.payback}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            `amount` = VALUES(`amount`),
+            `grade` = VALUES(`grade`),
+            `add_mileage` = VALUES(`add_mileage`),
+            `payback` = VALUES(`payback`)
+    </insert>
+
+</mapper>

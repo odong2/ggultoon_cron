@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.dao.member.MemberDao">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        UPDATE
+    =============================================================== -->
+
+    <!-- 성인이 된 회원들의 본인인증 정보 업데이트 -->
+    <update id="updateAdultInfo" parameterType="MemberDto">
+        <foreach collection="list" item="item" open="" close="" separator=";">
+            UPDATE <include refid="database"/> `member`
+            SET
+                `adult` = #{item.adult}
+            WHERE
+                `idx` = #{item.idx}
+        </foreach>
+    </update>
+
+</mapper>

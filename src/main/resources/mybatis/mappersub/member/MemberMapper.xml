@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.daosub.member.MemberDaoSub">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 해당 작품을 찜한 회원 리스트 조회 -->
+    <select id="getLikeMemberIdxList" parameterType="List" resultType="Long">
+        SELECT
+            DISTINCT(`member_idx`) AS memberIdx
+        FROM <include refid="database"/> `member_favorite_contents`
+        WHERE
+            `contents_idx` IN
+            <foreach item="item" collection="list" open="(" separator="," close=")">
+                #{item.idx}
+            </foreach>
+    </select>
+
+    <!-- 미성년자 회원 리스트 조회 -->
+    <select id="getMinorList" resultType="MemberDto">
+        SELECT
+            `me`.`idx`,
+            `me`.`adult`,
+            `mein`.`birth`
+        FROM <include refid="database"/> `member` AS `me`
+        JOIN <include refid="database"/> `member_info` AS `mein`
+            ON `me`.`idx` = `mein`.`member_idx`
+        WHERE
+            `me`.`adult` = 0
+            AND `me`.`state` = 1
+            AND `mein`.`state` = 1
+    </select>
+
+    <!-- 가입 회원 조회 -->
+    <select id="getJoinMember" parameterType="Map" resultType="Long">
+        SELECT
+        IFNULL(COUNT(1),0) AS cnt
+        FROM
+            <include refid="database"/>    `member` AS `me`
+        WHERE
+            <![CDATA[
+            `me`.`regdate` >= CONVERT_TZ(#{startDay}, 'Asia/Seoul', 'UTC')
+            AND `me`.`regdate` < CONVERT_TZ(#{endDay}, 'Asia/Seoul', 'UTC')
+            ]]>
+    </select>
+
+    <!-- 탈퇴 회원 조회 -->
+    <select id="getOutMember" parameterType="Map" resultType="Long">
+        SELECT
+        IFNULL(COUNT(1),0) AS cnt
+        FROM
+            <include refid="database"/> `member_out` AS `meou`
+        WHERE
+            <![CDATA[
+            `meou`.`outdate` >= CONVERT_TZ(#{startDay}, 'Asia/Seoul', 'UTC')
+            AND `meou`.`outdate` < CONVERT_TZ(#{endDay}, 'Asia/Seoul', 'UTC')
+            ]]>
+    </select>
+
+    <!-- 결제금액 조회 -->
+    <select id="getPayMember" parameterType="Map" resultType="Long">
+        SELECT
+        IFNULL(SUM(FLOOR(`pa`.`pay`)),0) AS cnt
+        FROM
+            <include refid="database"/> `payment` AS `pa`
+        WHERE
+            <![CDATA[
+            `pa`.`regdate` >= CONVERT_TZ(#{startDay}, 'Asia/Seoul', 'UTC')
+            AND `pa`.`regdate` < CONVERT_TZ(#{endDay}, 'Asia/Seoul', 'UTC')
+            AND `pa`.`state` = '1'
+            ]]>
+    </select>
+
+    <!-- 결제횟수 조회 -->
+    <select id="getPayCnt" parameterType="Map" resultType="Long">
+        SELECT
+         IFNULL(COUNT(1),0) AS cnt
+        FROM
+            `webtoon`. `payment` AS `pa`
+        WHERE
+            <![CDATA[
+            `pa`.`regdate` >= CONVERT_TZ(#{startDay}, 'Asia/Seoul', 'UTC')
+            AND `pa`.`regdate` < CONVERT_TZ(#{endDay}, 'Asia/Seoul', 'UTC')
+            AND `pa`.`state` = '1'
+            ]]>
+    </select>
+
+</mapper>

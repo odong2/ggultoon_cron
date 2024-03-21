@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.architecture.admin.models.daosub.coin.CoinDaoSub">
+    <!-- ==============================================================
+        SETTING
+    =============================================================== -->
+    <!-- database name -->
+    <sql id="database">${databaseRefId}</sql>
+
+    <!-- ==============================================================
+        SELECT
+    =============================================================== -->
+
+    <!-- 만료된 코인 idx 조회 -->
+    <select id="getExpireCoinIdxList" parameterType="String" resultType="Long">
+        SELECT
+            `idx`
+        FROM <include refid="database"/>`member_coin_used`
+        WHERE
+            `state` = 0
+    </select>
+
+    <!-- 만료된 마일리지 idx 조회 -->
+    <select id="getExpireMileageIdxList" parameterType="String" resultType="Long">
+        SELECT
+            `idx`
+        FROM <include refid="database"/>`member_mileage_used`
+        WHERE
+            `state` = 0
+    </select>
+
+    <!-- 소멸 예정 코인 조회 [일주일 뒤] -->
+    <select id="getExpireCoinInfoList" parameterType="String" resultType="MemberNotificationDto">
+        SELECT
+            `idx` AS `typeIdx`,
+            `rest_coin` AS `title`,
+            `member_idx`
+        FROM <include refid="database"/>`member_coin_used`
+        WHERE
+                `expiredate` <![CDATA[ = ]]> #{inOneWeekDate}
+            AND `state` = 1
+            AND `rest_coin` > 0
+    </select>
+
+    <!-- 소멸 예정 마일리지 조회 [일주일 뒤] -->
+    <select id="getExpireMileageInfoList" parameterType="String" resultType="MemberNotificationDto">
+        SELECT
+            `idx` AS `typeIdx`,
+            `rest_mileage` AS `title`,
+            `member_idx`
+        FROM <include refid="database"/>`member_mileage_used`
+        WHERE
+                `expiredate` <![CDATA[ = ]]> #{inOneWeekDate}
+            AND `state` = 1
+            AND `rest_mileage` > 0
+    </select>
+
+</mapper>
